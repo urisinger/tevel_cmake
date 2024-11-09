@@ -30,12 +30,13 @@
 #else
 
 void taskMain() {
+
+	WDT_startWatchdogKickTask(10 / portTICK_RATE_MS, FALSE);
   InitSubsystems();
 
   while (TRUE) {
     logError(EPS_Conditioning(), "Error in TRX");
     logError(TRX_Logic(), "Error in TRX");
-
     // logError(Maintenance(),"Error in Maintenance");
     // logError(Telementry(),"Error in Telementry";
   }
@@ -67,5 +68,4 @@ int main() {
 #endif
 
   vTaskStartScheduler();
-  return 0;
 }

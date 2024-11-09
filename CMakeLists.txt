@@ -1,19 +1,18 @@
 cmake_minimum_required(VERSION 3.16)
+set(CMAKE_TOOLCHAIN_FILE "toolchain.cmake")
 project(GlobusSatProject C)
+set(CMAKE_EXPORT_COMPILE_COMMANDS on)
+
 
 execute_process(
-    COMMAND "${CMAKE_C_COMPILER}" -print-sysroot
-    OUTPUT_VARIABLE GCC_SYSROOT
-    OUTPUT_STRIP_TRAILING_WHITESPACE
+  COMMAND which CMAKE_C_COMPILER
+  OUTPUT_VARIABLE BINUTILS_PATH
+  OUTPUT_STRIP_TRAILING_WHITESPACE
 )
-
-set(CMAKE_C_COMPILER "arm-none-eabi-gcc")
-set(CMAKE_OBJCOPY "arm-none-eabi-objcopy")
-set(CMAKE_SIZE "arm-none-eabi-size")
 
 # Set the target CPU and compiler options
 set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mcpu=arm926ej-s -O0 -ffunction-sections -Wall -Wextra -g -Dat91sam9g20 -I${GCC_SYSROOT}/include")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mcpu=arm926ej-s -O0 -ffunction-sections -Wall -Wextra -g -Dat91sam9g20")
 
 # Specify the linker script and directories for libraries
 set(LINKER_SCRIPT "${CMAKE_SOURCE_DIR}/hal/at91/linker-scripts/sdram.lds")
@@ -23,9 +22,6 @@ set(LIB_DIRS "${CMAKE_SOURCE_DIR}/hal/at91/lib"
              "${CMAKE_SOURCE_DIR}/hal/freertos/lib"
              "${CMAKE_SOURCE_DIR}/hal/hal/lib"
            )
-
-# Add libraries
-set(LIBS HALD HCCD SatelliteSubsystemsD FreeRTOSD At91D)
 
 # Find all source files in src directory and its subdirectories
 file(GLOB_RECURSE SOURCE_FILES "${CMAKE_SOURCE_DIR}/src/*.c")
@@ -44,13 +40,14 @@ target_include_directories(GlobusSatProject.elf PRIVATE
            )
 
 # Link the libraries and set linker options
-target_link_libraries(GlobusSatProject.elf ${LIBS})
+target_link_libraries(GlobusSatProject.elf HALD HCCD SatelliteSubsystemsD FreeRTOSD At91D)
 target_link_options(GlobusSatProject.elf PRIVATE 
     "-T${LINKER_SCRIPT}"
+    "-lc" 
     "-Wl,-Map=GlobusSatProject.map"
     "-nostartfiles"
     "-Xlinker" "--gc-sections"
-    "-lc" "-u _printf_float" "-u _scanf_float"
+    "-u _printf_float" "-u _scanf_float"
 )
 
 # Specify library search directories
