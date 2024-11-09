@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 project(GlobusSatProject C)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+execute_process(
+    COMMAND "${CMAKE_C_COMPILER}" -print-sysroot
+    OUTPUT_VARIABLE GCC_SYSROOT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 
 set(CMAKE_C_COMPILER "arm-none-eabi-gcc")
 set(CMAKE_OBJCOPY "arm-none-eabi-objcopy")
@@ -8,9 +13,7 @@ set(CMAKE_SIZE "arm-none-eabi-size")
 
 # Set the target CPU and compiler options
 set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mcpu=arm926ej-s -O0 -ffunction-sections -Wall -Wextra -g -Dat91sam9g20")
-
-add_compile_options(-Wno-bidi-chars)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mcpu=arm926ej-s -O0 -ffunction-sections -Wall -Wextra -g -Dat91sam9g20 -I${GCC_SYSROOT}/include")
 
 # Specify the linker script and directories for libraries
 set(LINKER_SCRIPT "${CMAKE_SOURCE_DIR}/hal/at91/linker-scripts/sdram.lds")

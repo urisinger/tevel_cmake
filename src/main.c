@@ -2,7 +2,6 @@
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 
-#include "hal/errors.h"
 #include <hal/Drivers/I2C.h>
 #include <hal/Drivers/SPI.h>
 #include <hal/Timing/Time.h>
@@ -68,5 +67,5 @@ int main() {
 #endif
 
   vTaskStartScheduler();
-  exit(0);
+  return 0;
 }
