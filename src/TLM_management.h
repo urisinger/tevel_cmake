@@ -29,7 +29,7 @@
 
 typedef enum
 {
-	FS_SUCCSESS,
+	FS_SUCCESS,
 	FS_DUPLICATED,
 	FS_LOCKED,
 	FS_TOO_LONG_NAME,
@@ -64,20 +64,20 @@ int CMD_getDataImage(sat_packet_t *cmd);
 /**
  * write telematry data to file
  */
-int write2File(void* data, int size ,char* ext);
+int writeToFile(void* data, int size ,char* ext);
 
-int deleteTLMFiles(tlm_type_t tlmType, Time date, int numOfDays);
+int deleteTLMFiles(char* ext, Time date, int numOfDays);
 
 /*
  * delete a single file from the SD
  */
-int deleteTLMFile(tlm_type_t tlmType, Time date, int days2Add);
+int deleteTLMFile(char* ext, Time date, int days2Add);
 
 void calculateFileName(Time curr_date,char* file_name, char* endFileName, int days2Add);
 /*
  * Read telematry file and send it to ground station over RF
  */
-int readTLMFile(tlm_type_t tlmType, Time date, int numOfDays,int cmd_id,int resolution);
+int readTLMFile(char* ext, Time date, int numOfDays,int cmd_id,int read_size);
 /*
  *
  */

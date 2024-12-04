@@ -6,11 +6,15 @@
 #include "SubSystemModules/Communication/SatCommandHandler.h"
 #include "SubSystemModules/Housekepping/TelemetryCollector.h"
 #include "SysI2CAddr.h"
+#include "freertos/projdefs.h"
 #include "satellite-subsystems/IsisTRXVU.h"
 #include "utils.h"
 #include "FRAM_FlightParameters.h"
 #include "AckHandler.h"
 #include <string.h>
+
+
+static xSemaphoreHandle xIsTransmitting;
 
 void muteTransmission(time_unix mute_time){
 	time_unix unmuteTime;
@@ -18,6 +22,13 @@ void muteTransmission(time_unix mute_time){
 
 	unmuteTime += mute_time;
 	logError(FRAM_WRITE_FIELD(&unmuteTime, trxMuteTime), "muteTransmission");
+}
+
+void unmuteTransmission(){
+	time_unix currentTime;
+	logError(Time_getUnixEpoch(&currentTime), "muteTransmission");
+
+	logError(FRAM_WRITE_FIELD(&currentTime, trxMuteTime), "muteTransmission");
 }
 
 void getMuteTime(time_unix* mute_time){
@@ -32,18 +43,31 @@ void muteTRXVU(){
 void unmuteTRXVU(){
 	Boolean mute = FALSE;
 	logError(FRAM_WRITE_FIELD(&mute, trxMute), "unmuteTRXVU");
+
 }
 
 int isMuted(Boolean* isMuted){
 	return FRAM_READ_FIELD(isMuted, trxMute);
 }
 
+Boolean IsTransmitting() {
+	if(pdTRUE == xSemaphoreTake(xIsTransmitting,0)){
+		xSemaphoreGive(xIsTransmitting);
+		return FALSE;
+	}
+	return TRUE;
+}
+
 Boolean checkTransmissionAllowed(){
+  if (IsTransmitting()){
+    return FALSE;
+  }
 	Boolean mute;
 	logError(isMuted(&mute), "checkTransmissionAllowed");
 	if (mute){
 		return FALSE;
 	}
+
 	time_unix curTime;
 	time_unix muteTime;
 
@@ -92,15 +116,32 @@ int InitTrxvu()
 	return rv;
 }
 
+
 int TransmitSplPacket(sat_packet_t *packet, unsigned char *avalFrames){
+
+	if (xSemaphoreTake(xIsTransmitting,SECONDS_TO_TICKS(1)) != pdTRUE)
+		return E_GET_SEMAPHORE_FAILED;
+
+
+
 	if (!checkTransmissionAllowed()){
-		return 0;
+		return -1;
 	}
 	//the total size of the packet is 8 + the length of the SPL data
 	unsigned char length = 8 + packet->length;
 	int err = IsisTrxvu_tcSendAX25DefClSign(ISIS_TRXVU_I2C_BUS_INDEX, (unsigned char*)packet, length, avalFrames);
+  xSemaphoreGive(xIsTransmitting);
 	logError(err, "TransmitSplPacket");
 	return err;
+}
+
+int sendBeacon(){
+	WOD_Telemetry_t wod;
+	PROPEGATE_ERROR(GetCurrentWODTelemetry(&wod), "GetCurrentWODTelemetry");
+	sat_packet_t cmd;
+	PROPEGATE_ERROR(AssembleCommand( &wod,  sizeof(WOD_Telemetry_t),  0,  0, 0, &cmd), "AssembleCommand");
+  PROPEGATE_ERROR(TransmitSplPacket( &cmd, NULL), "TransmitSplPacket");
+  return 0;
 }
 
 int BeaconLogic(){
@@ -109,13 +150,12 @@ int BeaconLogic(){
 
 	time_unix beaconSendTime;
 	FRAM_READ_FIELD(&beaconSendTime, beaconSendTime);
+	printf("%d %d \n", beaconSendTime, curTime);
 	if(curTime > beaconSendTime){
-		WOD_Telemetry_t wod;
-		GetCurrentWODTelemetry(&wod);
-		sat_packet_t cmd;
-		AssembleCommand( &wod,  sizeof(WOD_Telemetry_t),  0,  0, 0, &cmd);
-		TransmitSplPacket( &cmd, NULL);
-
+    int err = sendBeacon();
+    if (err != E_NO_SS_ERR){
+      return err;
+    }
 		time_unix beaconInterval;
 		FRAM_READ_FIELD(&beaconInterval, beaconInterval);
 
@@ -126,6 +166,7 @@ int BeaconLogic(){
 	}
 	return 0;
 }
+
 
 void changeBeaconTime(time_unix time){
 	FRAM_READ_FIELD(&time, beaconInterval);
@@ -156,7 +197,6 @@ int TRX_Logic(){
 
 int GetNumberOfFramesInBuffer(){
 	unsigned short frame_count = 0;
-	int error = IsisTrxvu_rcGetFrameCount(ISIS_TRXVU_I2C_BUS_INDEX, &frame_count);
-	logError(error , "GetNumberOfFramesInBuffer");
+	PROPEGATE_ERROR(IsisTrxvu_rcGetFrameCount(ISIS_TRXVU_I2C_BUS_INDEX, &frame_count) , "GetNumberOfFramesInBuffer");
 	return frame_count;
 }

@@ -12,7 +12,7 @@ execute_process(
 
 # Set the target CPU and compiler options
 set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mcpu=arm926ej-s -O0 -ffunction-sections -Wall -Wextra -g -Dat91sam9g20")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -ffunction-sections -Wall -Wextra -g -Dat91sam9g20")
 
 # Specify the linker script and directories for libraries
 set(LINKER_SCRIPT "${CMAKE_SOURCE_DIR}/hal/at91/linker-scripts/sdram.lds")
